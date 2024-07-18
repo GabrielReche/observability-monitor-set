@@ -1,0 +1,85 @@
+version: '3.8' # Define a versão do arquivo Docker Compose
+
+networks: 
+  monitoring: 
+    driver: bridge # Define uma rede bridge para os containers se comunicarem
+
+volumes: 
+  prometheus_data: {} # Define um volume para armazenar dados do Prometheus
+
+services: 
+  node-exporter: 
+    image: prom/node-exporter:latest # Usa a imagem mais recente do Node Exporter
+    container_name: node-exporter # Nome do container
+    restart: unless-stopped # Reinicia o container a menos que ele seja parado manualmente
+    volumes: 
+      - /proc:/host/proc:ro # Monta o diretório /proc do host como somente leitura
+      - /sys:/host/sys:ro # Monta o diretório /sys do host como somente leitura
+      - /:/rootfs:ro # Monta o sistema de arquivos raiz do host como somente leitura
+    command: 
+      - '--path.procfs=/host/proc' # Define o caminho para o sistema de arquivos proc
+      - '--path.rootfs=/rootfs' # Define o caminho para o sistema de arquivos raiz
+      - '--path.sysfs=/host/sys' # Define o caminho para o sistema de arquivos sys
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)' # Exclui pontos de montagem específicos da coleta de dados do sistema de arquivos
+    ports: 
+      - 9100:9100 # Mapeia a porta 9100 do host para a porta 9100 do container
+    networks: 
+      - monitoring # Conecta o container à rede monitoring
+
+  prometheus: 
+    image: prom/prometheus:latest # Usa a imagem mais recente do Prometheus
+    user: "1001" # Executa o container com o usuário 1001
+    environment: 
+      - PUID=1001 # Define o UID do usuário
+      - PGID=1001 # Define o GID do grupo
+    container_name: prometheus # Nome do container
+    restart: unless-stopped # Reinicia o container a menos que ele seja parado manualmente
+    volumes: 
+      - ~/promgrafnode/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml # Monta o arquivo de configuração do Prometheus do host no container
+      - ~/promgrafnode/prometheus:/prometheus # Monta o diretório do Prometheus do host no container
+    command: 
+      - '--config.file=/etc/prometheus/prometheus.yml' # Define o arquivo de configuração do Prometheus
+      - '--storage.tsdb.path=/prometheus' # Define o caminho de armazenamento do TSDB
+      - '--web.console.libraries=/etc/prometheus/console_libraries' # Define o caminho das bibliotecas do console web
+      - '--web.console.templates=/etc/prometheus/consoles' # Define o caminho dos templates do console web
+      - '--web.enable-lifecycle' # Habilita o ciclo de vida do web
+    ports: 
+      - 9090:9090 # Mapeia a porta 9090 do host para a porta 9090 do container
+    networks: 
+      - monitoring # Conecta o container à rede monitoring
+
+  grafana: 
+    image: grafana/grafana:latest # Usa a imagem mais recente do Grafana
+    user: "1001" # Executa o container com o usuário 1001
+    container_name: grafana # Nome do container
+    ports: 
+      - 3000:3000 # Mapeia a porta 3000 do host para a porta 3000 do container
+    restart: unless-stopped # Reinicia o container a menos que ele seja parado manualmente
+    volumes: 
+      - ~/promgrafnode/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources # Monta o diretório de provisionamento de fontes de dados do Grafana do host no container
+      - ~/promgrafnode/grafana:/var/lib/grafana # Monta o diretório de dados do Grafana do host no container
+    networks: 
+      - monitoring # Conecta o container à rede monitoring
+
+  cadvisor: 
+    image: gcr.io/cadvisor/cadvisor:latest # Usa a imagem mais recente do cAdvisor
+    container_name: cadvisor # Nome do container
+    ports: 
+      - 8081:8080 # Mapeia a porta 8081 do host para a porta 8080 do container
+    networks: 
+      - monitoring # Conecta o container à rede monitoring
+    volumes: 
+      - /:/rootfs:ro # Monta o sistema de arquivos raiz do host como somente leitura
+      - /var/run:/var/run:rw # Monta o diretório /var/run do host como leitura e escrita
+      - /sys:/sys:ro # Monta o diretório /sys do host como somente leitura
+      - /var/lib/docker/:/var/lib/docker:ro # Monta o diretório de dados do Docker do host como somente leitura
+    depends_on: 
+      - redis # Define dependência do container Redis
+
+  redis: 
+    image: redis:latest # Usa a imagem mais recente do Redis
+    container_name: redis # Nome do container
+    ports: 
+      - 6379:6379 # Mapeia a porta 6379 do host para a porta 6379 do container
+    networks: 
+      - monitoring # Conecta o container à rede monitoring

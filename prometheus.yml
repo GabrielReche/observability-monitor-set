@@ -1,0 +1,22 @@
+global:
+  scrape_interval: 1m # Define o intervalo global de coleta de métricas para 1 minuto
+
+scrape_configs:
+  - job_name: "prometheus" # Nome do job de coleta de métricas do próprio Prometheus
+    scrape_interval: 1m # Intervalo de coleta de métricas específico para este job
+    static_configs:
+      - targets: ["localhost:9090"] # Define o alvo (endereço e porta) para a coleta de métricas do Prometheus
+
+  - job_name: "node" # Nome do job de coleta de métricas do Node Exporter
+    static_configs:
+      - targets: ["node-exporter:9100"] # Define o alvo (endereço e porta) para a coleta de métricas do Node Exporter
+
+  - job_name: "cadvisor" # Nome do job de coleta de métricas do cAdvisor
+    scrape_interval: 5s # Intervalo de coleta de métricas específico para este job
+    static_configs:
+      - targets: ["10.1.149.19:8081"] # Define o alvo (endereço e porta) para a coleta de métricas do cAdvisor
+
+  - job_name: "hvhost01" # Nome do job de coleta de métricas de um host específico
+    scrape_interval: 5s # Intervalo de coleta de métricas específico para este job
+    static_configs:
+      - targets: ["10.1.149.191:9182"] # Define o alvo (endereço e porta) para a coleta de métricas deste host
